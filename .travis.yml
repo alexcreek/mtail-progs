@@ -1,0 +1,12 @@
+---
+language: ruby
+services:
+  - docker
+notifications:
+  email: false
+before_install:
+  - docker build -t mtail-progs .
+jobs:
+  include:
+  - stage: tests
+    script: docker run -v $PWD:/code -w /code mtail-progs /bin/sh -c "bundle exec rspec"
