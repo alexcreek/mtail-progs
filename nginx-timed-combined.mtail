@@ -1,0 +1,36 @@
+# Parser for nginx timed_combined log format
+# https://lincolnloop.com/blog/tracking-application-response-time-nginx/ without $pipe
+#    log_format timed_combined '$remote_addr - $remote_user [$time_local] '
+#                              '"$request" $status $body_bytes_sent '
+#                              '"$http_referer" "$http_user_agent" '
+#                              '$request_time $upstream_response_time';
+
+counter http_requests_total by method, status, uri
+counter http_client_errors_total by method, status, uri
+counter http_server_errors_total by method, status, uri
+
+/^/ +
+/(?P<remote_addr>[0-9A-Za-z\.:-]+)/ +
+/ - / +
+/(?P<remote_user>[a-zA-Z\-]+) / +
+/\[(?P<time_local>\d{2}\/\w{3}\/\d{4}:\d{2}:\d{2}:\d{2} \+\d{4})\] / +
+/"(?P<method>[A-Z]+) / + # request
+/(?P<uri>\S+)\?(?P<query_param>\S+) / + # request
+/(?P<http_version>HTTP\/[0-9\.]+)" / + # request
+/(?P<status>\d{3}) / +
+/(?P<bytes_sent>\d+) / +
+/"(?P<http_referer>\S+)" / +
+/"(?P<http_user_agent>\S+)" / +
+/(?P<request_time>\d+\.\d+) / +
+/(?P<upstream_response_time>\d+\.\d+)/ +
+/$/ {
+  http_requests_total[$method, $status, $uri]++
+
+  string($status) =~ /4\d{2}/ {
+    http_client_errors_total[$method, $status, $uri]++
+  }
+
+  string($status) =~ /5\d{2}/ {
+    http_server_errors_total[$method, $status, $uri]++
+  }
+}
